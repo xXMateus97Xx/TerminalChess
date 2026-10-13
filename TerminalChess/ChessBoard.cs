@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace TerminalChess;
 
 public class ChessBoard
@@ -46,12 +48,16 @@ public class ChessBoard
 
     private int _movesCounter, _halfMoveCounter;
 
-    private bool _whiteKingMoved,
-        _blackKingMoved,
-        _blackRook1Moved,
-        _blackRook2Moved,
-        _whiteRook1Moved,
-        _whiteRook2Moved;
+    // Peças que já se moveram (ou torres capturadas), usadas para os direitos de roque.
+    // Torre 1 é a da coluna A (roque grande) e torre 2 a da coluna H (roque pequeno)
+    private const byte WHITE_KING_MOVED = 1;
+    private const byte BLACK_KING_MOVED = 1 << 1;
+    private const byte WHITE_ROOK_1_MOVED = 1 << 2;
+    private const byte WHITE_ROOK_2_MOVED = 1 << 3;
+    private const byte BLACK_ROOK_1_MOVED = 1 << 4;
+    private const byte BLACK_ROOK_2_MOVED = 1 << 5;
+
+    private byte _movedFlags;
 
     public ChessBoard()
     {
@@ -98,9 +104,7 @@ public class ChessBoard
 
         _enPassantCapture = null;
 
-        _whiteKingMoved = _blackKingMoved = false;
-
-        _blackRook1Moved = _blackRook2Moved = _whiteRook1Moved = _whiteRook2Moved = false;
+        _movedFlags = 0;
 
         _nextRound = PieceColor.White;
 
@@ -557,10 +561,31 @@ public class ChessBoard
     private bool HasCastlingRight(PieceColor color, bool kingSide)
     {
         if (color == PieceColor.White)
-            return !_whiteKingMoved && !(kingSide ? _whiteRook2Moved : _whiteRook1Moved);
+            return !WhiteKingMoved() && !(kingSide ? WhiteRook2Moved() : WhiteRook1Moved());
 
-        return !_blackKingMoved && !(kingSide ? _blackRook2Moved : _blackRook1Moved);
+        return !BlackKingMoved() && !(kingSide ? BlackRook2Moved() : BlackRook1Moved());
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool WhiteKingMoved() => (_movedFlags & WHITE_KING_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool BlackKingMoved() => (_movedFlags & BLACK_KING_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool WhiteRook1Moved() => (_movedFlags & WHITE_ROOK_1_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool WhiteRook2Moved() => (_movedFlags & WHITE_ROOK_2_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool BlackRook1Moved() => (_movedFlags & BLACK_ROOK_1_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool BlackRook2Moved() => (_movedFlags & BLACK_ROOK_2_MOVED) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetMovedFlag(byte flag) => _movedFlags |= flag;
 
     private static bool KnightMoveIsValid((int x, int y) origin, (int x, int y) destiny)
     {
@@ -671,12 +696,12 @@ public class ChessBoard
             if (color == PieceColor.Black)
             {
                 _blackKingPosition = destiny;
-                _blackKingMoved = true;
+                SetMovedFlag(BLACK_KING_MOVED);
             }
             else
             {
                 _whiteKingPosition = destiny;
-                _whiteKingMoved = true;
+                SetMovedFlag(WHITE_KING_MOVED);
             }
 
             // Roque: a torre passa para o outro lado do rei
@@ -723,16 +748,16 @@ public class ChessBoard
         switch (position)
         {
             case (0, 0):
-                _blackRook1Moved = true;
+                SetMovedFlag(BLACK_ROOK_1_MOVED);
                 break;
             case (7, 0):
-                _blackRook2Moved = true;
+                SetMovedFlag(BLACK_ROOK_2_MOVED);
                 break;
             case (0, 7):
-                _whiteRook1Moved = true;
+                SetMovedFlag(WHITE_ROOK_1_MOVED);
                 break;
             case (7, 7):
-                _whiteRook2Moved = true;
+                SetMovedFlag(WHITE_ROOK_2_MOVED);
                 break;
         }
     }
